@@ -1,0 +1,118 @@
+---
+title: "ANA 515 Assignment 4"
+author: "Fang Tham"
+date: '2022-10-15'
+output: word_document
+---
+
+```{r setup, include=FALSE}
+library(ggpubr)
+library(knitr)
+library(dplyr)
+library(bslib)
+library(tidyverse)
+```
+
+# Discuss the business problem/goal 
+Based on the mall customers dataset, I would like to segment the customers based on their age, gender, and interest to help with customized marketing for business owners in the mall.
+
+# Retrieving data
+The dataset is obtained from Kaggle: (https://www.kaggle.com/datasets/shwetabh123/mall-customers?resource=download&select=Mall_Customers.csv), titled "Mall_Customers", which contains information on customers such as customer id, gender, age, annual income, and spending score. 
+
+```{r data, include = TRUE}
+#I retrieve the dataset by setting a working directory 
+setwd("/Users/FangTham/OneDrive - Hazel Technologies/McDaniel College/ANA515/Week 8")
+malldata <- read.csv("Mall_Customers.csv")
+```
+
+I printed the first ten rows of data to ensure the dataset is imported 
+```{r}
+head (malldata)
+```
+
+# Cleaning up the data set
+I realized that the column name "gender" is mispelled, so i renamed the column, and cleaned up the names of the other columns
+```{r}
+colnames(malldata)[2] = "Gender"
+colnames(malldata)[4] = "AnnualIncome"
+colnames(malldata)[5] = "SpendingScore"
+```
+
+
+I inspect the characteristics of my dataset
+
+This data set has `r nrow(malldata)` rows and `r ncol(malldata)` columns. The names of the columns and a brief description of each are in the table below:
+
+```{r, echo=FALSE}
+#The table below shows a summary of what each column means.
+table_description <- data.frame(Names = c("CustomerID", "Gender", "Age", "AnnualIncome", "SpendingScore"),
+  Description = c(
+    "Customer number ID", 
+    "Gender of customer",
+    "Age of customer",
+    "Annual income of customer", "Assigned spending score of customer from 1-100"))
+print(table_description)
+```
+
+# Summarizing the data set
+```{r}
+#This is to show a summary of the dataset 
+summary(malldata)
+table(malldata$Gender)/length(malldata$Gender)
+```
+
+Based on the dataset, there are 56% of female, and 44% of male shoppers. The youngest age of a customer is 18, and the oldest age of a customer is 70, with a mean of 38, and median of 36. This means that the data is just slightly right skewed. We also saw that the spending score ranged from 1-00, with a mean of 50.20 and median of 50. The annual income ranged from 15k-137k. To better understand the distribution, I will plot a histogram for the age group.
+
+```{r}
+hist(malldata$Age, col="blue",border="black", xlab="Age", main="A Histogram of Mall Shoppers' Age")
+```
+
+I then split the age groups into 4 distint age groups based on age
+```{r}
+Agegrouped <- malldata %>% 
+  mutate(AgeGroup = case_when(Age>=18 & Age <28 ~'1',
+                              Age>=28 & Age <38 ~ '2',
+                              Age>=38 & Age<50 ~ '3',
+                              Age>= 50 ~ '4'))
+
+ggplot(Agegrouped, aes(x=factor(AgeGroup)))+
+  geom_bar(stat="count", width=0.5, fill="blue")+
+  theme_minimal()
+```
+
+We can see the age group "2" builds the highest proportion of shoppers, and age group 1, 3, and 4 are pretty equal in proportion. I wanted to see if there's a correlation between the age group and their annual income, so I perform a cross tab analysis on the groups and mean annual income.
+
+```{r}
+aggregate(x=Agegrouped$AnnualIncome,
+          by=list(Agegrouped$AgeGroup), 
+          FUN=mean)
+```  
+I found that age group "2" of 28 to 38 has the highest annual income of 70k, where as group "1" of 18 to 28 years old has the lowest income. This make sense as younger shoppers are probably still in college and not pursuing a full time job yet. The older shoppers are also probably retired. I wanted to see if there is a correlation between the annual income and the spending score.  
+  
+```{r}
+#Scatter plot of spending score vs annual income
+incomespending <- ggplot(Agegrouped, aes(AnnualIncome, SpendingScore)) +           
+  geom_point()
+
+graphplot <- incomespending +                                     
+  stat_smooth(method = "lm",formula = y ~ x,geom = "smooth") +
+            stat_regline_equation(label.x=120, label.y=120) +
+            stat_cor(aes(label=..rr.label..), label.x=120, label.y=110)
+graphplot
+```
+
+The R squared value is 9.8E-5, which means that the correlation between Spending Score and Annual Income is low. I had expected to get a positive correlation. However, it is interesting to see that the concentration of spending score is tighter (around a score of 30-60) for shoppers with annual income around 48k-60k compared to all other shoppers.   
+  
+I also wanted to see if gender and age group plays a role in spending score
+```{r}
+aggregate(x=Agegrouped$SpendingScore,
+          by=list(Agegrouped$Gender, Agegrouped$AgeGroup), 
+          FUN=mean)
+```
+From this, we can see that there is a general trend where females have higher spending scores than males. Moreover, age group 2 (28-38) also had the highest mean spending score for both male and females.
+
+# Conclusion
+Overall, we can conclude that:
+1. There is no direct correlation between annual income and spending score
+2. Females have higher spending score than males across all age groups
+3. Age group 2 (28-38 years old) have the highest spending score
